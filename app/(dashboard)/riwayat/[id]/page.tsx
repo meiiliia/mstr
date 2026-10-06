@@ -159,7 +159,7 @@ export default async function SessionDetailPage({
             variant={
               session.status === "running"
                 ? "success"
-                : "secondary"
+                : "default"
             }
           >
             {session.status === "running"

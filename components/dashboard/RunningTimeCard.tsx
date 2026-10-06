@@ -20,10 +20,9 @@ export default function RunningTimeCard({
       return;
     }
 
-    function updateTimer() {
-      const start =
-        new Date(startedAt).getTime();
+    const start = new Date(startedAt).getTime();
 
+    function updateTimer() {
       const now = Date.now();
 
       setElapsed(

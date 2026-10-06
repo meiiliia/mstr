@@ -64,9 +64,10 @@ export default function RealtimeMetrics({
         title="Tegangan"
         value={
           reading
-            ? `${Number(reading.voltage).toFixed(3)} V`
-            : "0.000 V"
+            ? Number(reading.voltage).toFixed(3)
+            : "0.000"
         }
+        unit="V"
         icon={<Zap size={20} />}
       />
 
@@ -74,9 +75,10 @@ export default function RealtimeMetrics({
         title="Arus"
         value={
           reading
-            ? `${Number(reading.current).toFixed(3)} mA`
-            : "0.000 mA"
+            ? Number(reading.current).toFixed(3)
+            : "0.000"
         }
+        unit="mA"
         icon={<Activity size={20} />}
       />
 
@@ -84,9 +86,10 @@ export default function RealtimeMetrics({
         title="Daya"
         value={
           reading
-            ? `${Number(reading.power).toFixed(3)} mW`
-            : "0.000 mW"
+            ? Number(reading.power).toFixed(3)
+            : "0.000"
         }
+        unit="mW"
         icon={<Gauge size={20} />}
       />
     </>
