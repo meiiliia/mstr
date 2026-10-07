@@ -6,143 +6,112 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const {
-      session_id,
-      voltage,
-      current,
-      power,
-    } = body;
-
-    // Validasi session_id
-    if (
-      session_id === undefined ||
-      session_id === null ||
-      Number.isNaN(Number(session_id))
-    ) {
-      return NextResponse.json(
-        {
-          error: "session_id wajib diisi.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
+    const voltage = Number(body.voltage);
+    const current = Number(body.current);
+    const power = Number(body.power);
 
     // Validasi data sensor
     if (
-      voltage === undefined ||
-      current === undefined ||
-      power === undefined
+      !Number.isFinite(voltage) ||
+      !Number.isFinite(current) ||
+      !Number.isFinite(power)
     ) {
       return NextResponse.json(
         {
-          error:
-            "voltage, current, dan power wajib diisi.",
+          success: false,
+          message: "Data sensor tidak valid.",
         },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const voltageNumber = Number(voltage);
-    const currentNumber = Number(current);
-    const powerNumber = Number(power);
-
-    if (
-      Number.isNaN(voltageNumber) ||
-      Number.isNaN(currentNumber) ||
-      Number.isNaN(powerNumber)
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Nilai voltage, current, dan power harus berupa angka.",
-        },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
     const supabase = await createClient();
 
-    // Pastikan sesi memang sedang berjalan
-    const { data: session, error: sessionError } =
+    // ========================================
+    // CARI SESI YANG SEDANG BERJALAN
+    // ========================================
+
+    const { data: activeSession, error: sessionError } =
       await supabase
         .from("sessions")
-        .select("id, status")
-        .eq("id", Number(session_id))
+        .select("id")
+        .eq("status", "running")
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (sessionError) {
+      console.error("Gagal mencari sesi aktif:", sessionError);
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Gagal memeriksa sesi aktif.",
+        },
+        { status: 500 }
+      );
+    }
+
+    // ========================================
+    // TIDAK ADA SESI AKTIF
+    // ========================================
+
+    if (!activeSession) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Tidak ada sesi yang sedang berjalan.",
+        },
+        { status: 409 }
+      );
+    }
+
+    // ========================================
+    // SIMPAN DATA SENSOR
+    // ========================================
+
+    const { data: reading, error: insertError } =
+      await supabase
+        .from("sensor_readings")
+        .insert({
+          session_id: activeSession.id,
+          voltage,
+          current,
+          power,
+        })
+        .select()
         .single();
 
-    if (sessionError || !session) {
-      return NextResponse.json(
-        {
-          error: "Sesi tidak ditemukan.",
-        },
-        {
-          status: 404,
-        }
-      );
-    }
-
-    if (session.status !== "running") {
-      return NextResponse.json(
-        {
-          error: "Sesi sudah tidak berjalan.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    // Simpan data sensor
-    const { data, error } = await supabase
-      .from("sensor_readings")
-      .insert({
-        session_id: Number(session_id),
-        voltage: voltageNumber,
-        current: currentNumber,
-        power: powerNumber,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Supabase sensor error:", error);
+    if (insertError) {
+      console.error("Gagal menyimpan data sensor:", insertError);
 
       return NextResponse.json(
         {
-          error: "Gagal menyimpan data sensor.",
-          detail: error.message,
+          success: false,
+          message: "Gagal menyimpan data sensor.",
         },
-        {
-          status: 500,
-        }
+        { status: 500 }
       );
     }
 
     return NextResponse.json(
       {
+        success: true,
         message: "Data sensor berhasil disimpan.",
-        data,
+        session_id: activeSession.id,
+        data: reading,
       },
-      {
-        status: 201,
-      }
+      { status: 201 }
     );
   } catch (error) {
     console.error("Sensor API error:", error);
 
     return NextResponse.json(
       {
-        error: "Request tidak valid.",
+        success: false,
+        message: "Request tidak valid.",
       },
-      {
-        status: 400,
-      }
+      { status: 400 }
     );
   }
 }
